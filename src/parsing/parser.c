@@ -1,0 +1,117 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   parser.c                                           :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: htoe <htoe@student.42bangkok.com>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/04/26 12:00:00 by htoe              #+#    #+#             */
+/*   Updated: 2026/08/19 06:45:21 by htoe             ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+static int	is_sep(t_token_type t)
+{
+	return (t == TOKEN_PIPE || t == TOKEN_AND
+		|| t == TOKEN_OR || t == TOKEN_SEMI);
+}
+
+static t_token	*handle_token(t_token *t, t_command **c)
+{
+	if (is_sep(t->type))
+	{
+		if (t->type == TOKEN_AND)
+			(*c)->logic = LOGIC_AND;
+		else if (t->type == TOKEN_OR)
+			(*c)->logic = LOGIC_OR;
+		else if (t->type == TOKEN_SEMI)
+			(*c)->logic = LOGIC_SEQ;
+		(*c)->next = new_command();
+		(*c)->next->prev = *c;
+		*c = (*c)->next;
+	}
+	else if (t->type == TOKEN_WORD)
+		add_argument(*c, t->value);
+	else if (t->type >= TOKEN_REDIRECT_IN && t->type <= TOKEN_HEREDOC)
+	{
+		if (!t->next || t->next->type != TOKEN_WORD)
+			return (ft_putendl_fd("minishell: syntax error", 2), NULL);
+		add_redirection(*c, t, t->next);
+		return (t->next->next);
+	}
+	return (t->next);
+}
+
+static t_token	*handle_subshell(t_token *tmp, t_command **curr)
+{
+	int		paren_count;
+	t_token	*sub_start;
+	t_token	*sub_tokens;
+
+	sub_start = tmp->next;
+	paren_count = 1;
+	while (tmp->next && paren_count > 0)
+	{
+		tmp = tmp->next;
+		if (tmp->type == TOKEN_L_PAREN)
+			paren_count++;
+		if (tmp->type == TOKEN_R_PAREN)
+			paren_count--;
+	}
+	sub_tokens = extract_subtokens(sub_start, tmp);
+	(*curr)->sub_cmd = parse_tokens(sub_tokens);
+	free_tokens(sub_tokens);
+	return (tmp->next);
+}
+
+t_command	*parse_tokens(t_token *tokens)
+{
+	t_token			*tmp;
+	t_command		*head;
+	t_command		*curr;
+
+	if (!tokens)
+		return (NULL);
+	head = new_command();
+	curr = head;
+	tmp = tokens;
+	while (tmp)
+	{
+		if (tmp->type == TOKEN_L_PAREN)
+		{
+			tmp = handle_subshell(tmp, &curr);
+			if (tmp && is_sep(tmp->type))
+				continue ;
+			if (!tmp)
+				break ;
+		}
+		tmp = handle_token(tmp, &curr);
+		if (!tmp)
+			break ;
+	}
+	return (head);
+}
+
+t_command	*parse_input(char *line, char **envp, int *last_status)
+{
+	t_token			*tokens;
+	t_exec_params	params;
+	t_command		*cmd_head;
+
+	params.envp = &envp;
+	params.last_status = last_status;
+	tokens = tokenize(line, &params);
+	if (!tokens)
+		return (NULL);
+	if (validate_syntax(tokens))
+	{
+		*last_status = 2;
+		free_tokens(tokens);
+		return (NULL);
+	}
+	cmd_head = parse_tokens(tokens);
+	free_tokens(tokens);
+	return (cmd_head);
+}

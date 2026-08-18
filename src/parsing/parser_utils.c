@@ -1,0 +1,100 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   parser_utils.c                                     :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: htoe <htoe@student.42bangkok.com>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/04/26 12:00:00 by htoe              #+#    #+#             */
+/*   Updated: 2026/08/19 06:45:24 by htoe             ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+t_command	*new_command(void)
+{
+	t_command	*cmd;
+
+	cmd = (t_command *)malloc(sizeof(t_command));
+	if (!cmd)
+		return (NULL);
+	ft_memset(cmd, 0, sizeof(t_command));
+	cmd->fd_in = -1;
+	cmd->fd_out = -1;
+	return (cmd);
+}
+
+void	add_argument(t_command *cmd, char *arg)
+{
+	char	**new_args;
+	int		i;
+
+	if (arg && arg[0] == '\1' && arg[1] == '\0')
+		return ;
+	i = 0;
+	while (cmd->args && cmd->args[i])
+		i++;
+	new_args = (char **)malloc(sizeof(char *) * (i + 2));
+	if (!new_args)
+		return ;
+	i = 0;
+	while (cmd->args && cmd->args[i])
+	{
+		new_args[i] = cmd->args[i];
+		i++;
+	}
+	new_args[i] = ft_strdup(arg);
+	new_args[i + 1] = NULL;
+	if (cmd->args)
+		free(cmd->args);
+	cmd->args = new_args;
+}
+
+static void	free_redirs(t_redir *redir)
+{
+	t_redir	*tmp;
+
+	while (redir)
+	{
+		tmp = redir->next;
+		if (redir->filename)
+			free(redir->filename);
+		free(redir);
+		redir = tmp;
+	}
+}
+
+void	free_command_list(t_command *cmd)
+{
+	t_command	*tmp;
+
+	while (cmd)
+	{
+		tmp = cmd->next;
+		if (cmd->args)
+			free_split(cmd->args);
+		if (cmd->redirs)
+			free_redirs(cmd->redirs);
+		if (cmd->sub_cmd)
+			free_command_list(cmd->sub_cmd);
+		free(cmd);
+		cmd = tmp;
+	}
+}
+
+t_token	*extract_subtokens(t_token *start, t_token *end)
+{
+	t_token	*head;
+	t_token	*curr;
+
+	head = NULL;
+	curr = start;
+	while (curr && curr != end)
+	{
+		append_token(&head, new_token(ft_strdup(curr->value),
+				curr->type, curr->quoted));
+		curr = curr->next;
+	}
+	return (head);
+}

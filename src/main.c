@@ -5,8 +5,8 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: htoe <htoe@student.42bangkok.com>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/08/19 03:41:51 by htoe              #+#    #+#             */
-/*   Updated: 2026/08/19 05:19:03 by htoe             ###   ########.fr       */
+/*   Created: 2026/04/26 12:00:00 by htoe              #+#    #+#             */
+/*   Updated: 2026/08/19 06:48:31 by htoe             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,14 +14,28 @@
 
 volatile sig_atomic_t	g_signal_received;
 
-static void	init_shell(char ***env_vars, char **env)
+static void	init_shell(char ***env_vars, char **envp)
 {
-	*env_vars = copy_env(env);
+	*env_vars = copy_env(envp);
 	increment_shlvl(env_vars);
 	setup_signals();
 }
 
-static void	shell_loop(char ***env, int *last_status)
+static void	process_input(char *line, char ***envp, int *last_status)
+{
+	t_command	*cmd_list;
+
+	if (line && *line)
+		add_history(line);
+	cmd_list = parse_input(line, *envp, last_status);
+	if (cmd_list)
+	{
+		execute_commands(cmd_list, envp, last_status);
+		free_command_list(cmd_list);
+	}
+}
+
+static void	shell_loop(char ***env_vars, int *last_status)
 {
 	char	*line;
 
@@ -42,22 +56,23 @@ static void	shell_loop(char ***env, int *last_status)
 		}
 		if (g_signal_received)
 			*last_status = 130;
+		process_input(line, env_vars, last_status);
 		free(line);
 	}
 }
 
-int	main(int ac, char **av, char **env)
+int	main(int argc, char **argv, char **envp)
 {
 	char	**env_vars;
 	int		last_status;
 
-	(void)ac;
-	(void)av;
-	init_shell(&env_vars, env);
+	(void)argc;
+	(void)argv;
+	init_shell(&env_vars, envp);
 	last_status = 0;
 	g_signal_received = 0;
 	shell_loop(&env_vars, &last_status);
 	rl_clear_history();
 	free_split(env_vars);
-	return (0);
+	return (last_status);
 }
