@@ -6,7 +6,7 @@
 #    By: htoe <htoe@student.42bangkok.com>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/02/03 14:28:26 by htoe              #+#    #+#              #
-#    Updated: 2026/08/19 03:42:41 by htoe             ###   ########.fr        #
+#    Updated: 2026/08/19 05:04:02 by htoe             ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -16,9 +16,9 @@
 #Compilation & Commands
 NAME=a.out
 CC = cc
-CFLAGS = -Wall -Wextra -Werror -lreadline
+CFLAGS = 
 CINCLUDES = -Iinclude -Ilibft/include
-LIBFLAGS = -Llibft -lft
+LIBFLAGS = -Llibft -lft -lreadline
 RM = rm -Rf
 
 #Directories
@@ -27,10 +27,12 @@ OBJDIR = objs
 
 #Sources
 SRCS = \
-	${SRCDIR}/main.c
+	${SRCDIR}/main.c \
+	${SRCDIR}/env_utils.c \
+	${SRCDIR}/builtins_utils.c \
+	${SRCDIR}/signals.c 
 	
 OBJS = ${SRCS:${SRCDIR}/%.c=${OBJDIR}/%.o}
-BOBJS = ${BSRCS:${SRCDIR}/%.c=${OBJDIR}/%.o}
 LIBS = libft/libft.a
 
 #Pattern Rules
